@@ -54,6 +54,16 @@ class TimelineFilterTest {
         assertEquals(input, filter(FilterSettings(blockPromoted = false)).filter(input).json)
         assertEquals(input, filter(FilterSettings(enabled = false)).filter(input).json)
     }
+    @Test fun `standalone rtb image ad is removed`() {
+        // RTB ads are a bare TimelineRtbImageAd item with no tweet_results; the only promotion
+        // marker is rtb_promoted_metadata nested under entry.content.content.
+        val rtb = JSONObject().put("entryId", "rta-1").put("content", JSONObject().put("content", JSONObject()
+            .put("__typename", "TimelineRtbImageAd").put("advertiser_name", "Acme")
+            .put("rtb_promoted_metadata", JSONObject().put("impression_id", "x"))))
+        val out = filter().filter(envelope(rtb, tweet("2", "hello")))
+        assertEquals("推广广告", out.events.single().reason)
+        assertEquals(listOf("tweet-2"), (0 until entries(out.json).length()).map { entries(out.json).getJSONObject(it).getString("entryId") })
+    }
     @Test fun `long note tweet and visibility wrapper are parsed`() {
         val entry = tweet("1", "truncated")
         val tweet = result(entry).put("note_tweet", JSONObject().put("note_tweet_results", JSONObject().put("result", JSONObject().put("text", "long spam"))))
