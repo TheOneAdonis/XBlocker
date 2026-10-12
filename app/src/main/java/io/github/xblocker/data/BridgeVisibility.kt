@@ -13,7 +13,8 @@ object BridgeVisibility {
      */
     fun grant(context: Context) {
         runCatching {
-            context.grantUriPermission("com.twitter.android", Uri.parse("content://$AUTHORITY"), Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.grantUriPermission("com.twitter.android", Uri.parse("content://$AUTHORITY"),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
     }
 }
