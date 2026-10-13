@@ -121,11 +121,10 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 container?.optJSONObject("promoted_metadata") != null || container?.optJSONObject("rtb_promoted_metadata") != null ||
                 item.optJSONObject("promotedMetadata") != null || content.optJSONObject("promotedMetadata") != null ||
                 item.optJSONObject("promoted_metadata") != null ||
-                // RTB (real-time bidding) ads arrive as a standalone TimelineRtbImageAd item with no
-                // tweet_results, so findTweetContainer misses them; their only promotion marker is
-                // rtb_promoted_metadata (the GraphQL field aliased onto promoted_metadata).
-                item.optJSONObject("rtb_promoted_metadata") != null || content.optJSONObject("rtb_promoted_metadata") != null ||
-                item.optString("__typename") == "TimelineRtbImageAd" || content.optString("__typename") == "TimelineRtbImageAd" ||
+                // Standalone RTB ads have no tweet reference. Inspect their timeline wrappers
+                // separately so an ad marker cannot stop the search for a real tweet.
+                hasRtbPromotion(item, 0) || content.optJSONObject("rtb_promoted_metadata") != null ||
+                content.optString("__typename") == "TimelineRtbImageAd" ||
                 result?.optJSONObject("promoted_content") != null || result?.optJSONObject("legacy")?.optJSONObject("promoted_content") != null
             if (promoted) stats.promoted.incrementAndGet()
             val repostSignal = if (container != null && tweet != null) repostSignal(result, container, item, content) else null
@@ -180,8 +179,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
         if (depth > 4) return null
         when (node) {
             is JSONObject -> {
-                if (node.optJSONObject("tweetResult") != null || node.optJSONObject("tweet_results") != null ||
-                    node.optJSONObject("rtb_promoted_metadata") != null) return node
+                if (node.optJSONObject("tweetResult") != null || node.optJSONObject("tweet_results") != null) return node
                 for (key in node.keys().asSequence().toList()) {
                     if (key in setOf("quoted_status_result", "retweeted_status_result", "user_results", "user_result")) continue
                     findTweetContainer(node.opt(key), depth + 1)?.let { return it }
@@ -190,6 +188,23 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             is JSONArray -> for (i in 0 until minOf(node.length(), 40)) findTweetContainer(node.opt(i), depth + 1)?.let { return it }
         }
         return null
+    }
+
+    /** Recognize RTB wrappers without reading quoted tweets, users or tweet bodies. */
+    private fun hasRtbPromotion(node: Any?, depth: Int): Boolean {
+        if (depth > 4) return false
+        return when (node) {
+            is JSONObject -> when {
+                node.optJSONObject("rtb_promoted_metadata") != null ||
+                    node.optString("__typename") == "TimelineRtbImageAd" -> true
+                node.optJSONObject("tweetResult") != null || node.optJSONObject("tweet_results") != null -> false
+                else -> node.keys().asSequence().filter {
+                    it !in setOf("quoted_status_result", "retweeted_status_result", "user_results", "user_result")
+                }.any { hasRtbPromotion(node.opt(it), depth + 1) }
+            }
+            is JSONArray -> (0 until minOf(node.length(), 40)).any { hasRtbPromotion(node.opt(it), depth + 1) }
+            else -> false
+        }
     }
 
     private fun readTweet(result: JSONObject): Tweet? {
