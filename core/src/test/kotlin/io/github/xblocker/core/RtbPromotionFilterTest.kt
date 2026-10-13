@@ -22,6 +22,7 @@ class RtbPromotionFilterTest {
             val input = envelope(rtb(key), tweet("2", "hello"))
             val out = filter().filter(input)
             assertEquals(listOf("推广广告"), out.events.map { it.reason }, "metadata=$key")
+            assertEquals("TimelineRtbImageAd", out.events.single().rule)
             assertEquals("tweet-2", JSONObject(out.json).getJSONArray("entries").getJSONObject(0).getString("entry_id"))
             assertEquals(input, filter(FilterSettings(blockPromoted = false)).filter(input).json)
             assertEquals(input, filter(FilterSettings(enabled = false)).filter(input).json)
@@ -58,5 +59,48 @@ class RtbPromotionFilterTest {
         assertEquals("tweet-3", entries.getJSONObject(0).getJSONObject("content").getJSONArray("items")
             .getJSONObject(0).getString("entry_id"))
         assertEquals("cursor-bottom", entries.getJSONObject(1).getString("entry_id"))
+    }
+
+    @Test fun `RTB bookkeeping fields never turn an ordinary feed into ads`() {
+        // These are synthetic boundary cases, not a captured device response. A metadata
+        // field alone must not promote a TimelineTweet, even when it contains values.
+        for (metadata in listOf(JSONObject.NULL, JSONObject(), JSONObject().put("impression_id", "bookkeeping"))) {
+            val posts = (1..60).map { id -> tweet(id.toString(), "hello").apply {
+                getJSONObject("content").put("rtb_promoted_metadata", metadata)
+                    .getJSONObject("content").put("__typename", "TimelineTweet")
+                    .put("rtb_promoted_metadata", metadata)
+            } }.toTypedArray()
+            val input = envelope(*posts)
+            val f = filter()
+            val out = f.filter(input)
+            assertTrue(input == out.json, "metadata=$metadata, retained=${JSONObject(out.json).getJSONArray("entries").length()}")
+            assertTrue(out.events.isEmpty())
+            assertEquals(60, f.stats.tweets.get())
+            assertEquals(0, f.stats.promoted.get())
+        }
+    }
+
+    @Test fun `standalone RTB metadata without a recognized ad type stays untouched`() {
+        val unknown = JSONObject().put("entry_id", "unknown-1").put("content", JSONObject()
+            .put("rtb_promoted_metadata", JSONObject().put("impression_id", "bookkeeping")))
+        val input = envelope(unknown, tweet("2", "hello"))
+        assertEquals(input, filter().filter(input).json)
+    }
+
+    @Test fun `RTB types in unrelated auxiliary data do not promote an ordinary tweet`() {
+        val clean = tweet("1", "hello")
+        clean.getJSONObject("content").put("auxiliary", JSONObject().put("__typename", "TimelineRtbImageAd"))
+        val input = envelope(clean)
+        assertEquals(input, filter().filter(input).json)
+    }
+
+    @Test fun `enabled promotion blocking keeps keyword reasons for RTB metadata on normal tweets`() {
+        val spam = tweet("1", "spam")
+        spam.getJSONObject("content").put("rtb_promoted_metadata", JSONObject())
+        val clean = tweet("2", "hello")
+        clean.getJSONObject("content").put("rtb_promoted_metadata", JSONObject())
+        val out = filter().filter(envelope(spam, clean))
+        assertEquals(listOf("正文"), out.events.map { it.reason })
+        assertEquals("tweet-2", JSONObject(out.json).getJSONArray("entries").getJSONObject(0).getString("entry_id"))
     }
 }

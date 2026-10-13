@@ -117,20 +117,20 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 if (tweet.text.isNotBlank()) stats.texts.incrementAndGet()
                 if (tweet.isReply) stats.replies.incrementAndGet()
             }
+            // RTB metadata is not proof that the outer timeline item is an advertisement.
+            // Require the concrete ad type and follow only timeline content wrappers.
+            val rtbPromoted = hasRtbPromotion(item, 0) || content.optString("__typename") == "TimelineRtbImageAd"
             val promoted = container?.optJSONObject("promotedMetadata") != null || container?.optJSONObject("tweetPromotedMetadata") != null ||
-                container?.optJSONObject("promoted_metadata") != null || container?.optJSONObject("rtb_promoted_metadata") != null ||
+                container?.optJSONObject("promoted_metadata") != null ||
                 item.optJSONObject("promotedMetadata") != null || content.optJSONObject("promotedMetadata") != null ||
                 item.optJSONObject("promoted_metadata") != null ||
-                // Standalone RTB ads have no tweet reference. Inspect their timeline wrappers
-                // separately so an ad marker cannot stop the search for a real tweet.
-                hasRtbPromotion(item, 0) || content.optJSONObject("rtb_promoted_metadata") != null ||
-                content.optString("__typename") == "TimelineRtbImageAd" ||
+                rtbPromoted ||
                 result?.optJSONObject("promoted_content") != null || result?.optJSONObject("legacy")?.optJSONObject("promoted_content") != null
             if (promoted) stats.promoted.incrementAndGet()
             val repostSignal = if (container != null && tweet != null) repostSignal(result, container, item, content) else null
             if (repostSignal != null) stats.reposts.incrementAndGet()
             val hit = when {
-                engine.settings.blockPromoted && promoted -> Match("推广广告", "promotedMetadata", "推广")
+                engine.settings.blockPromoted && promoted -> Match("推广广告", if (rtbPromoted) "TimelineRtbImageAd" else "promotedMetadata", "推广")
                 engine.settings.blockReposts && allowReposts && repostSignal != null -> Match("时间线转帖", repostSignal, "转帖")
                 else -> tweet?.let(engine::match)
             }
@@ -190,21 +190,14 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
         return null
     }
 
-    /** Recognize RTB wrappers without reading quoted tweets, users or tweet bodies. */
-    private fun hasRtbPromotion(node: Any?, depth: Int): Boolean {
+    /** Inspect the concrete timeline item type, never metadata, quoted tweets or auxiliary data. */
+    private fun hasRtbPromotion(node: JSONObject, depth: Int): Boolean {
         if (depth > 4) return false
-        return when (node) {
-            is JSONObject -> when {
-                node.optJSONObject("rtb_promoted_metadata") != null ||
-                    node.optString("__typename") == "TimelineRtbImageAd" -> true
-                node.optJSONObject("tweetResult") != null || node.optJSONObject("tweet_results") != null -> false
-                else -> node.keys().asSequence().filter {
-                    it !in setOf("quoted_status_result", "retweeted_status_result", "user_results", "user_result")
-                }.any { hasRtbPromotion(node.opt(it), depth + 1) }
-            }
-            is JSONArray -> (0 until minOf(node.length(), 40)).any { hasRtbPromotion(node.opt(it), depth + 1) }
-            else -> false
-        }
+        if (node.optString("__typename") == "TimelineRtbImageAd") return true
+        if (node.optJSONObject("tweetResult") != null || node.optJSONObject("tweet_results") != null ||
+            node.optString("__typename") in setOf("TimelineTweet", "Tweet", "TweetWithVisibilityResults")) return false
+        return sequenceOf("content", "itemContent", "item").mapNotNull { node.optJSONObject(it) }
+            .any { hasRtbPromotion(it, depth + 1) }
     }
 
     private fun readTweet(result: JSONObject): Tweet? {
