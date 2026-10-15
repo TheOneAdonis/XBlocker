@@ -16,16 +16,28 @@ data class FilterSettings(
     val whitelist: Set<String> = emptySet(),
     val blockReposts: Boolean = false,
     val preserveProfileReposts: Boolean = true,
+    val blockKeywordTweets: Boolean = false,
 )
 
 object RuleParser {
     private val header = Regex("^#(?:\\s*\\[([^]]+)\\]|\\s+(\\S+.*))$")
-    fun clean(text: String): String = buildString(text.length) {
-        text.codePoints().forEach { cp ->
+    fun clean(text: String): String = clean(text, Int.MAX_VALUE)
+
+    /** Equivalent to clean(text).take(maxChars), without scanning an unused suffix. */
+    fun clean(text: String, maxChars: Int): String = buildString(minOf(text.length, maxChars.coerceAtLeast(0))) {
+        require(maxChars >= 0)
+        var offset = 0
+        while (offset < text.length && length < maxChars) {
+            val cp = text.codePointAt(offset)
+            offset += Character.charCount(cp)
             // Default-ignorable characters used to evade literal matching; preserve whitespace.
             if (Character.getType(cp) != Character.FORMAT.toInt() && cp !in 0xFE00..0xFE0F &&
                 cp !in 0xE0100..0xE01EF && cp !in 0x180B..0x180F &&
-                cp !in listOf(0x034F, 0x115F, 0x1160, 0x3164, 0xFFA0)) appendCodePoint(cp)
+                cp != 0x034F && cp != 0x115F && cp != 0x1160 && cp != 0x3164 && cp != 0xFFA0) {
+                // String.take counts UTF-16 units, including a lone high surrogate at the boundary.
+                if (Character.isSupplementaryCodePoint(cp) && length == maxChars - 1) append(Character.highSurrogate(cp))
+                else appendCodePoint(cp)
+            }
         }
     }
     fun parse(text: String): List<Rule> {
@@ -45,7 +57,8 @@ object RuleParser {
     fun handle(value: String): String = value.trim().removePrefix("@").lowercase(Locale.ROOT)
 }
 
-data class Tweet(val id: String, val text: String, val name: String = "", val handle: String = "", val isReply: Boolean = false)
+data class Tweet(val id: String, val text: String, val name: String = "", val handle: String = "", val isReply: Boolean = false,
+    val urls: List<String> = emptyList())
 data class Match(val reason: String, val rule: String, val category: String)
 
 /** Java Pattern is bounded by a shared character-access budget for each tweet. */
@@ -65,12 +78,14 @@ class RuleEngine(val settings: FilterSettings, cloudText: String) {
     private data class Compiled(val rule: Rule, val literal: String?, val pattern: Pattern?)
     private val compiled = mutableListOf<Compiled>()
     val rejected = mutableListOf<RejectedRule>()
-    val categories = RuleParser.parse(cloudText).groupingBy { it.category }.eachCount()
+    val categories: Map<String, Int>
     val count: Int get() = compiled.size
     private val whitelist = settings.whitelist.map(RuleParser::handle).toSet()
 
     init {
-        val cloud = if (settings.cloudEnabled) RuleParser.parse(cloudText).filter { it.category !in settings.disabledCategories } else emptyList()
+        val parsedCloud = RuleParser.parse(cloudText)
+        categories = parsedCloud.groupingBy { it.category }.eachCount()
+        val cloud = if (settings.cloudEnabled) parsedCloud.filter { it.category !in settings.disabledCategories } else emptyList()
         val custom = RuleParser.parse(settings.customRules).map { it.copy(category = "自定义") }
         (cloud + custom).distinctBy { it.text }.take(15_000).forEach { rule ->
             try {
@@ -95,11 +110,15 @@ class RuleEngine(val settings: FilterSettings, cloudText: String) {
     }
 
     fun match(tweet: Tweet): Match? {
-        if (!settings.enabled || RuleParser.handle(tweet.handle) in whitelist || (settings.onlyReplies && !tweet.isReply)) return null
+        val inReplyScope = !settings.onlyReplies || tweet.isReply
+        if (!settings.enabled || RuleParser.handle(tweet.handle) in whitelist ||
+            (!inReplyScope && !settings.blockKeywordTweets)) return null
         val fields = buildList {
-            add("正文" to RuleParser.clean(tweet.text).take(32_768))
-            if (settings.checkNames) {
-                add("昵称" to RuleParser.clean(tweet.name).take(512))
+            add("正文" to RuleParser.clean(tweet.text, 32_768))
+            tweet.urls.take(32).forEach { add("正文" to RuleParser.clean(it, 2048)) }
+            // The extra scope is for post content; author-name scope remains unchanged.
+            if (settings.checkNames && inReplyScope) {
+                add("昵称" to RuleParser.clean(tweet.name, 512))
                 add("用户名" to tweet.handle.take(128))
             }
         }

@@ -36,6 +36,7 @@ The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also p
 ### Filtering rules
 
 - Filters replies by default, with optional filtering for Home and Search timelines
+- Block tweets containing keywords is off by default. When enabled, existing rules also match regular post text and expanded links even in reply-only mode; allowlists and cloud category switches still apply, and quoted content is not inspected
 - Display names, usernames, promoted content and rule categories can be toggled independently
 - Optional timeline repost blocking (off by default) removes reposts and keeps quote posts, independently of reply-only mode, keywords and the allowlist
 - Keep profile reposts (on by default) preserves user-profile reposts when timeline repost blocking is enabled; turn it off to block profile reposts too
@@ -57,7 +58,8 @@ The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also p
 
 ### Diagnostics and updates
 
-- View the module connection, data adapter, block counts and the latest 200 records
+- View the module connection, data adapter, block counts and the latest 1000 records
+- Search history by account or rule, filter by block type and browse by date; expand entries to read full rules and allowlist accounts blocked by rules
 - Export diagnostics as a ZIP archive for bug reports
 - Automatically checks GitHub stable releases on launch, with manual checks available at any time
 - Download from GitHub or the `gh.dpik.top` mirror, then request installation by the system

@@ -53,21 +53,9 @@ class Repository(context: Context) {
         for (key in json.keys()) if (key in setOf("version", "hooks", "adapter", "pid", "fg", "seen", "filtered", "error", "responses", "rules", "rejected", "probe",
                 "envelopes", "jsonParsed", "entriesArrays", "entriesInspected", "tweets", "texts", "replies", "promoted", "reposts", "blocked")) previous.put(key, json.opt(key))
         previous.put("lastSeen", System.currentTimeMillis())
-        val records = history()
-        val incoming = json.optJSONArray("events") ?: JSONArray()
-        val known = (0 until records.length()).map { records.getJSONObject(it).optString("id") }.toMutableSet()
-        var added = 0
-        for (i in 0 until minOf(incoming.length(), 100)) {
-            val event = incoming.optJSONObject(i) ?: continue
-            if (event.optString("id").isBlank() || !known.add(event.optString("id"))) continue
-            val safe = JSONObject()
-            for (key in listOf("id", "handle", "reason", "rule", "category")) safe.put(key, event.optString(key).take(1000))
-            safe.put("time", System.currentTimeMillis())
-            records.put(safe); added++
-        }
-        while (records.length() > 200) records.remove(0)
-        commitAndShare(prefs.edit().putString("diagnostics", previous.toString()).putString("history", records.toString())
-            .putLong("blocked", blocked() + added))
+        val history = HistoryStore.append(history(), json.optJSONArray("events"), System.currentTimeMillis())
+        commitAndShare(prefs.edit().putString("diagnostics", previous.toString()).putString("history", history.records.toString())
+            .putLong("blocked", blocked() + history.added))
         makeSharedPrefsReadable()
         if (BuildConfig.DEBUG) {
             val file = AtomicFile(debugStatus)

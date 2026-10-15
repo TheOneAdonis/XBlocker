@@ -43,6 +43,7 @@ object DiagnosticReport {
             put("syncError", state.syncError.take(2000))
             put("enabled", state.settings.enabled)
             put("onlyReplies", state.settings.onlyReplies)
+            put("blockKeywordTweets", state.settings.blockKeywordTweets)
             put("checkNames", state.settings.checkNames)
             put("blockPromoted", state.settings.blockPromoted)
             put("blockReposts", state.settings.blockReposts)

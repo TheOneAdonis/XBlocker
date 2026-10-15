@@ -94,6 +94,13 @@ internal fun LazyListScope.settingsItems(
                 onCheckedChange = { value -> vm.update { it.copy(onlyReplies = value) } },
             )
             SwitchPreference(
+                title = resources.getString(R.string.block_keyword_tweets),
+                summary = resources.getString(R.string.block_keyword_tweets_summary),
+                startAction = { SettingsIcon(Icons.Rounded.Block) },
+                checked = state.settings.blockKeywordTweets,
+                onCheckedChange = { value -> vm.update { it.copy(blockKeywordTweets = value) } },
+            )
+            SwitchPreference(
                 title = resources.getString(R.string.check_display_names_and_usernames), summary = resources.getString(R.string.also_match_against_author_names),
                 startAction = { SettingsIcon(Icons.Rounded.Badge) },
                 checked = state.settings.checkNames,

@@ -15,7 +15,7 @@
     <string name="network_access">"Network access"</string>
     <string name="public_github_projects_are_used_only_to">"Public GitHub projects are used only to fetch rules, check versions and download updates you select. Tweet content is never sent."</string>
     <string name="local_history">"Local history"</string>
-    <string name="stores_block_counts_and_the_latest_200">"Stores block counts and the latest 200 block records, without tweet text. Clear them from History."</string>
+    <string name="stores_block_counts_and_history">"Stores block counts and recent block records (limit: %1$d), without tweet text. Clear them from History."</string>
     <string name="log_export">"Log export"</string>
     <string name="a_diagnostic_archive_is_created_only_when">"A diagnostic archive is created only when you save or share logs. It includes device and app versions, feature status, module statistics and app process logs. You choose the recipient in the system share sheet. Custom rules, the allowlist and block history are excluded."</string>
     <string name="account_actions">"Account actions"</string>
@@ -67,7 +67,7 @@
     <string name="parsed_removed">"Parsed: %1$d · Removed: %2$d"</string>
     <string name="system">"System"</string>
     <string name="block_history">"Block history"</string>
-    <string name="latest_records_up_to_200_stored">"Latest %1$d records · Up to 200 stored"</string>
+    <string name="latest_records_retained">"Saved: %1$d · Limit: %2$d"</string>
     <string name="cloud_rules">"Cloud rules"</string>
     <string name="open_x">"Open X"</string>
     <string name="start_browsing_to_automatically_hide_unwanted_content">"Start browsing to automatically hide unwanted content"</string>
@@ -91,7 +91,6 @@
     <string name="import_rules">"Import rules"</string>
     <string name="export_rules">"Export rules"</string>
     <string name="cloud_rules_attempt_to_update_every_6">"Cloud rules attempt to update every 6 hours, subject to system background scheduling. Review imported rules before saving."</string>
-    <string name="latest_records_200_maximum">"Latest %1$d records / 200 maximum"</string>
     <string name="clear">"Clear"</string>
     <string name="no_block_history_yet">"No block history yet"</string>
     <string name="browse_x_with_the_module_enabled_to">"Browse X with the module enabled to see matching entries here. Tweet text is not stored."</string>
@@ -218,8 +217,10 @@
     <string name="pre_release">"Pre-release"</string>
     <string name="get_early_access_to_release_candidates">"Get early access to release candidates"</string>
     <string name="theme_colors_and_interface_effects">"Theme, colors and interface effects"</string>
+    <string name="block_keyword_tweets">"Block tweets containing keywords"</string>
+    <string name="block_keyword_tweets_summary">"Off by default. Also match regular post text and links against your rules, even in reply-only mode. The allowlist still applies."</string>
     <string name="filter_replies_only">"Filter replies only"</string>
-    <string name="when_off_also_checks_home_and_search">"When off, also checks Home and Search tweets"</string>
+    <string name="when_off_also_checks_home_and_search">"When off, also checks Home and Search. The next switch can extend text matching separately."</string>
     <string name="check_display_names_and_usernames">"Check display names and usernames"</string>
     <string name="also_match_against_author_names">"Also match against author names"</string>
     <string name="block_promoted_ads">"Block promoted ads"</string>
@@ -281,4 +282,26 @@
     <string name="preserve_profile_reposts_summary">"Keep reposts on user profiles when timeline repost blocking is enabled"</string>
     <string name="category_reposts">"Reposts"</string>
     <string name="reason_repost">"Timeline repost"</string>
+    <string name="history_saved">"Saved records: %1$d"</string>
+    <string name="history_showing">"Shown: %1$d / %2$d"</string>
+    <string name="history_retention">"Limit: %1$d · No post text stored"</string>
+    <string name="history_search">"Search account or rule"</string>
+    <string name="history_filter_all">"All"</string>
+    <string name="history_filter_rules">"Rules"</string>
+    <string name="history_unknown_time">"Unknown time"</string>
+    <string name="history_today">"Today"</string>
+    <string name="history_yesterday">"Yesterday"</string>
+    <string name="history_show_details">"Details"</string>
+    <string name="history_hide_details">"Collapse"</string>
+    <string name="history_unknown_author">"Unknown account"</string>
+    <string name="history_promoted_hidden">"Promoted content hidden"</string>
+    <string name="history_repost_hidden">"Timeline repost hidden"</string>
+    <string name="history_matched_rule">"Matched rule"</string>
+    <string name="history_post_id">"Post ID: %1$s"</string>
+    <string name="history_promoted_policy">"Blocked by “Block promoted ads”. The allowlist does not apply."</string>
+    <string name="history_repost_policy">"Blocked by “Block timeline reposts”. The allowlist does not apply."</string>
+    <string name="history_no_matches">"No matching records"</string>
+    <string name="history_no_matches_summary">"Try another account or rule, or reset the filters to see all saved records."</string>
+    <string name="history_reset_filters">"Reset filters"</string>
+    <string name="history_clear_search">"Clear search"</string>
 </resources>

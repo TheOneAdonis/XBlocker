@@ -54,7 +54,7 @@ internal fun AboutDocumentScreen(privacy: Boolean, onBack: () -> Unit) {
             if (privacy) {
                 item { Card { BasicComponent(title = resources.getString(R.string.local_filtering), summary = resources.getString(R.string.tweets_display_names_and_usernames_are_matched)) } }
                 item { Card { BasicComponent(title = resources.getString(R.string.network_access), summary = resources.getString(R.string.public_github_projects_are_used_only_to)) } }
-                item { Card { BasicComponent(title = resources.getString(R.string.local_history), summary = resources.getString(R.string.stores_block_counts_and_the_latest_200)) } }
+                item { Card { BasicComponent(title = resources.getString(R.string.local_history), summary = resources.getString(R.string.stores_block_counts_and_history, io.github.xblocker.data.HistoryStore.MAX_RECORDS)) } }
                 item { Card { BasicComponent(title = resources.getString(R.string.log_export), summary = resources.getString(R.string.a_diagnostic_archive_is_created_only_when)) } }
                 item { Card { BasicComponent(title = resources.getString(R.string.account_actions), summary = resources.getString(R.string.only_hides_matching_content_it_does_not)) } }
             } else {

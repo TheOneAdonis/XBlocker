@@ -175,6 +175,12 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     var preview by rememberSaveable { mutableStateOf(false) }
     var showRejected by rememberSaveable { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var historyQuery by rememberSaveable { mutableStateOf("") }
+    var historyFilter by rememberSaveable { mutableStateOf(HistoryFilter.All) }
+    var expandedHistoryKey by rememberSaveable { mutableStateOf("") }
+    val historyEntries = remember(state.history) { historyRecords(state.history) }
+    val historyWhitelist = remember(state.settings.whitelist) { state.settings.whitelist.map(RuleParser::handle).toSet() }
+
     var showLogDialog by rememberSaveable { mutableStateOf(false) }
     var selectedUpdateSource by rememberSaveable { mutableStateOf(UpdateSource.GITHUB.name) }
     var pendingNotificationTarget by rememberSaveable { mutableStateOf("") }
@@ -253,6 +259,9 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val options = state.appearance
     val usePredictiveBack = options.predictiveBack && Build.VERSION.SDK_INT >= 34
     val listStates = List(pages.size) { rememberLazyListState() }
+    LaunchedEffect(historyQuery, historyFilter) {
+        if (selectedPage == 2) listStates[2].scrollToItem(0)
+    }
     val scrollBehaviors = List(pages.size) { MiuixScrollBehavior() }
     val pageContent: @Composable (Int, Modifier) -> Unit = { page, pageModifier ->
     val scrollBehavior = scrollBehaviors[page]
@@ -321,6 +330,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             LazyColumn(
                 state = listStates[page],
                 modifier = Modifier.fillMaxSize().background(MiuixTheme.colorScheme.surface)
+                    .then(if (page == 2) Modifier.imePadding() else Modifier)
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
                     .padding(horizontal = 12.dp),
                 contentPadding = PaddingValues(top = padding.calculateTopPadding() + if (page == 4) 0.dp else 12.dp, bottom = padding.calculateBottomPadding() + 24.dp),
@@ -339,7 +349,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         }
                         item {
                             Card {
-                                BasicComponent(title = resources.getString(R.string.block_history), summary = resources.getString(R.string.latest_records_up_to_200_stored, state.history.size), onClick = { selectedPage = 2 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
+                                BasicComponent(title = resources.getString(R.string.block_history), summary = resources.getString(R.string.latest_records_retained, state.history.size, io.github.xblocker.data.HistoryStore.MAX_RECORDS), onClick = { selectedPage = 2 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
                                 BasicComponent(title = resources.getString(R.string.cloud_rules), summary = date(resources, state.lastSync), onClick = { selectedPage = 1 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
                             }
                         }
@@ -389,34 +399,17 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         } }
                         item { Notice(resources.getString(R.string.cloud_rules_attempt_to_update_every_6)) }
                     }
-                    2 -> {
-                        item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            SmallTitle(resources.getString(R.string.latest_records_200_maximum, state.history.size), insideMargin = sectionTitleMargin)
-                            TextButton(resources.getString(R.string.clear), onClick = { confirmClear = true }, enabled = state.history.isNotEmpty())
-                        } }
-                        if (state.history.isEmpty()) item {
-                            Card(insideMargin = PaddingValues(28.dp)) {
-                                Text(resources.getString(R.string.no_block_history_yet), fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                                Spacer(Modifier.height(10.dp))
-                                Text(resources.getString(R.string.browse_x_with_the_module_enabled_to), fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                            }
-                        }
-                        items(state.history) { event ->
-                            Card(insideMargin = PaddingValues(20.dp)) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(event.optString("handle").let { if (it.isEmpty()) resources.getString(R.string.promoted_entry) else "@$it" }, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                    Text(date(resources, event.optLong("time")), fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                                }
-                                Spacer(Modifier.height(6.dp))
-                                Text("${io.github.xblocker.i18n.LocalizedText.resolve(context, event.optString("category"))} · ${io.github.xblocker.i18n.LocalizedText.resolve(context, event.optString("reason"))}", color = MiuixTheme.colorScheme.primary, fontSize = 13.sp)
-                                Spacer(Modifier.height(6.dp))
-                                Text(event.optString("rule"), fontSize = 14.sp, maxLines = 3)
-                                val handle = event.optString("handle")
-                                if (handle.isNotBlank()) TextButton(if (handle.lowercase() in state.settings.whitelist) resources.getString(R.string.already_allowlisted) else resources.getString(R.string.add_to_allowlist), enabled = handle.lowercase() !in state.settings.whitelist,
-                                    onClick = { vm.update { it.copy(whitelist = it.whitelist + RuleParser.handle(handle)) }; vm.message(resources.getString(R.string.added_to_allowlist)) }, modifier = Modifier.padding(top = 12.dp))
-                            }
-                        }
-                    }
+                    2 -> historyItems(resources, historyEntries, historyQuery, historyFilter,
+                        expandedHistoryKey, historyWhitelist,
+                        onQueryChange = { historyQuery = it },
+                        onFilterChange = { historyFilter = it },
+                        onExpandedChange = { expandedHistoryKey = it },
+                        onAllowlist = { handle ->
+                            vm.update { it.copy(whitelist = it.whitelist + handle) }
+                            vm.message(resources.getString(R.string.added_to_allowlist))
+                        },
+                        onClear = { confirmClear = true },
+                    )
                     3 -> settingsItems(context, resources,
                         state = state, vm = vm,
                         onOpenTheme = { if (backStack.size == 1) backStack = backStack + 4 },

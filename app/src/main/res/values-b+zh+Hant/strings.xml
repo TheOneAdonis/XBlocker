@@ -15,7 +15,7 @@
     <string name="network_access">"聯網用途"</string>
     <string name="public_github_projects_are_used_only_to">"僅從公開的 GitHub 專案獲取詞庫、檢查版本和下載使用者選擇的更新包，不傳送推文內容。"</string>
     <string name="local_history">"本地記錄"</string>
-    <string name="stores_block_counts_and_the_latest_200">"儲存攔截計數及最近 200 條攔截記錄，不儲存推文正文。可在“記錄”頁清空。"</string>
+    <string name="stores_block_counts_and_history">"儲存攔截計數及最近 %1$d 筆攔截紀錄，不儲存推文內文。可在「紀錄」頁清空。"</string>
     <string name="log_export">"日誌匯出"</string>
     <string name="a_diagnostic_archive_is_created_only_when">"僅在你選擇儲存或傳送日誌時生成診斷包，包含裝置與應用版本、功能狀態、模組統計和本應用程序日誌。分享物件由你在系統分享面板中選擇。診斷包不包含自定義詞庫、白名單或攔截記錄。"</string>
     <string name="account_actions">"賬號操作"</string>
@@ -67,7 +67,7 @@
     <string name="parsed_removed">"解析 %1$d 次 · 移除 %2$d 條"</string>
     <string name="system">"系統"</string>
     <string name="block_history">"攔截記錄"</string>
-    <string name="latest_records_up_to_200_stored">"最近 %1$d 條 · 最多保留 200 條"</string>
+    <string name="latest_records_retained">"最近 %1$d 筆 · 最多保留 %2$d 筆"</string>
     <string name="cloud_rules">"雲端詞庫"</string>
     <string name="open_x">"開啟 X"</string>
     <string name="start_browsing_to_automatically_hide_unwanted_content">"開始瀏覽，垃圾內容將被自動隱藏"</string>
@@ -91,7 +91,6 @@
     <string name="import_rules">"匯入詞庫"</string>
     <string name="export_rules">"匯出詞庫"</string>
     <string name="cloud_rules_attempt_to_update_every_6">"雲端詞庫每 6 小時嘗試更新，時間受系統後臺排程影響。匯入後先預覽編輯，再儲存。"</string>
-    <string name="latest_records_200_maximum">"最近 %1$d 條 / 最多 200 條"</string>
     <string name="clear">"清空"</string>
     <string name="no_block_history_yet">"還沒有攔截記錄"</string>
     <string name="browse_x_with_the_module_enabled_to">"啟用模組後瀏覽 X，命中規則的條目會出現在這裡。記錄不儲存推文正文。"</string>
@@ -218,8 +217,10 @@
     <string name="pre_release">"預釋出"</string>
     <string name="get_early_access_to_release_candidates">"提前獲取 rc 測試版本"</string>
     <string name="theme_colors_and_interface_effects">"主題、顏色與介面效果"</string>
+    <string name="block_keyword_tweets">"封鎖包含關鍵字的推文"</string>
+    <string name="block_keyword_tweets_summary">"預設關閉。開啟後，即使僅過濾回覆，詞庫也會比對一般推文內文及連結，白名單仍生效。"</string>
     <string name="filter_replies_only">"僅過濾回覆"</string>
-    <string name="when_off_also_checks_home_and_search">"關閉後也檢查首頁、搜尋推文"</string>
+    <string name="when_off_also_checks_home_and_search">"關閉後也檢查首頁和搜尋；下方開關可單獨擴展內文比對範圍。"</string>
     <string name="check_display_names_and_usernames">"檢查暱稱和使用者名稱"</string>
     <string name="also_match_against_author_names">"正文之外，也檢查作者名稱"</string>
     <string name="block_promoted_ads">"遮蔽推廣廣告"</string>
@@ -281,4 +282,26 @@
     <string name="preserve_profile_reposts_summary">"開啟屏蔽時間軸轉發時，仍保留使用者個人頁面中的轉發"</string>
     <string name="category_reposts">"轉發"</string>
     <string name="reason_repost">"時間軸轉發"</string>
+    <string name="history_saved">"已儲存 %1$d 筆紀錄"</string>
+    <string name="history_showing">"篩選出 %1$d / %2$d 筆"</string>
+    <string name="history_retention">"僅保留最近 %1$d 筆，不儲存推文內文"</string>
+    <string name="history_search">"搜尋帳號或規則"</string>
+    <string name="history_filter_all">"全部"</string>
+    <string name="history_filter_rules">"規則"</string>
+    <string name="history_unknown_time">"時間未知"</string>
+    <string name="history_today">"今天"</string>
+    <string name="history_yesterday">"昨天"</string>
+    <string name="history_show_details">"查看詳情"</string>
+    <string name="history_hide_details">"收合詳情"</string>
+    <string name="history_unknown_author">"未知帳號"</string>
+    <string name="history_promoted_hidden">"推廣內容已隱藏"</string>
+    <string name="history_repost_hidden">"時間軸轉推已隱藏"</string>
+    <string name="history_matched_rule">"命中規則"</string>
+    <string name="history_post_id">"推文 ID：%1$s"</string>
+    <string name="history_promoted_policy">"由「封鎖推廣廣告」開關攔截，白名單對此不生效。"</string>
+    <string name="history_repost_policy">"由「封鎖時間軸轉推」開關攔截，白名單對此不生效。"</string>
+    <string name="history_no_matches">"沒有符合的紀錄"</string>
+    <string name="history_no_matches_summary">"試試其他帳號或規則，或重設篩選查看全部紀錄。"</string>
+    <string name="history_reset_filters">"重設篩選"</string>
+    <string name="history_clear_search">"清除搜尋"</string>
 </resources>

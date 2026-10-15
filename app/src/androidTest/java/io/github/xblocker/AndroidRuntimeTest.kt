@@ -14,6 +14,31 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AndroidRuntimeTest {
+    @Test fun historyRetainsOneThousandRecordsWithAndroidJson() {
+        var records = org.json.JSONArray()
+        repeat(11) { batch ->
+            val incoming = org.json.JSONArray()
+            repeat(100) { incoming.put(JSONObject().put("id", "${batch * 100 + it}")) }
+            records = io.github.xblocker.data.HistoryStore.append(records, incoming, batch.toLong()).records
+        }
+        assertEquals(1000, records.length())
+        assertEquals("100", records.getJSONObject(0).getString("id"))
+        assertEquals("1099", records.getJSONObject(999).getString("id"))
+    }
+    @Test fun keywordTweetScopePersistsAndMatchesExpandedLinksOnAndroid() {
+        val repository = io.github.xblocker.data.Repository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val original = repository.settings()
+        try {
+            assertFalse(ConfigCodec.decode(JSONObject()).blockKeywordTweets)
+            val settings = FilterSettings(cloudEnabled = false, customRules = "/example\\.org/i", blockKeywordTweets = true)
+            repository.save(settings)
+            assertEquals(settings, repository.settings())
+            val input = """{"entries":[{"entryId":"tweet-1","content":{"itemContent":{"tweet_results":{"result":{"rest_id":"1","legacy":{"full_text":"https://t.co/short","entities":{"urls":[{"expanded_url":"https://EXAMPLE.org/post"}]}}}}}}}]}"""
+            assertEquals(1, TimelineFilter(RuleEngine(repository.settings(), "")).filter(input).events.size)
+            repository.save(settings.copy(blockKeywordTweets = false))
+            assertEquals(input, TimelineFilter(RuleEngine(repository.settings(), "")).filter(input).json)
+        } finally { repository.save(original) }
+    }
     @Test fun cloudSnapshotCompilesOnAndroid() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val rules = context.assets.open("keywords.txt").bufferedReader().use { it.readText() }

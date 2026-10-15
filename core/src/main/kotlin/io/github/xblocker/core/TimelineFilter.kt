@@ -192,8 +192,23 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
         val bodies = listOfNotNull(tweet.optJSONObject("details"), tweet.optJSONObject("legacy"), tweet)
         fun statusField(key: String): String = bodies.asSequence().mapNotNull { it.opt(key) }
             .filter { it != JSONObject.NULL }.map { it.toString() }.firstOrNull { it.isNotBlank() }.orEmpty()
-        val text = tweet.optJSONObject("note_tweet")?.optJSONObject("note_tweet_results")?.optJSONObject("result")?.optString("text")
+        val note = tweet.optJSONObject("note_tweet")?.optJSONObject("note_tweet_results")?.optJSONObject("result")
+        val text = note?.optString("text")
             ?.takeIf { it.isNotBlank() } ?: statusField("full_text").ifBlank { statusField("text") }
+        // X stores t.co in full_text; the visible destination is in the tweet's own entities.
+        // Never read URLs from quoted tweets, cards, media or the author's profile.
+        val urls = buildList {
+            for (body in listOfNotNull(note) + bodies) {
+                val entities = body.optJSONObject("entities") ?: body.optJSONObject("entity_set") ?: continue
+                val links = entities.optJSONArray("urls") ?: continue
+                for (i in 0 until minOf(links.length(), 32)) {
+                    val link = links.optJSONObject(i) ?: continue
+                    for (key in listOf("expanded_url", "unwound_url", "display_url")) {
+                        link.optString(key).takeIf { it.isNotBlank() }?.let { add(it.take(2048)) }
+                    }
+                }
+            }
+        }.distinct().take(32)
         // The Android payload names the link "user_result", the web payload "user_results".
         val user = tweet.optJSONObject("core")?.let { it.optJSONObject("user_results") ?: it.optJSONObject("user_result") }?.optJSONObject("result")
         val userLegacy = user?.optJSONObject("legacy")
@@ -209,7 +224,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
         return Tweet(id, text,
             userCore?.optString("name")?.takeIf { it.isNotEmpty() } ?: userLegacy?.optString("name").orEmpty(),
             userCore?.optString("screen_name")?.takeIf { it.isNotEmpty() } ?: userLegacy?.optString("screen_name").orEmpty(),
-            explicitReply || threadReply)
+            explicitReply || threadReply, urls)
     }
     private fun unwrapTweet(result: JSONObject): JSONObject? =
         if (result.optString("__typename") == "TweetWithVisibilityResults") result.optJSONObject("tweet") else result
