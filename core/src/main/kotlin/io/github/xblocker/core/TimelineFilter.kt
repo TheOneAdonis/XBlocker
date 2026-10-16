@@ -199,12 +199,18 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
         // Never read URLs from quoted tweets, cards, media or the author's profile.
         val urls = buildList {
             for (body in listOfNotNull(note) + bodies) {
-                val entities = body.optJSONObject("entities") ?: body.optJSONObject("entity_set") ?: continue
-                val links = entities.optJSONArray("urls") ?: continue
-                for (i in 0 until minOf(links.length(), 32)) {
-                    val link = links.optJSONObject(i) ?: continue
-                    for (key in listOf("expanded_url", "unwound_url", "display_url")) {
-                        link.optString(key).takeIf { it.isNotBlank() }?.let { add(it.take(2048)) }
+                // Android also exposes URLs directly beside details/legacy as url_entities.
+                // Read each known container independently: an empty entities object must
+                // not hide entity_set or url_entities. Keep this scoped to the outer post.
+                val containers = listOfNotNull(body.optJSONArray("url_entities"),
+                    body.optJSONObject("entities")?.optJSONArray("urls"),
+                    body.optJSONObject("entity_set")?.optJSONArray("urls"))
+                for (links in containers) {
+                    for (i in 0 until minOf(links.length(), 32)) {
+                        val link = links.optJSONObject(i) ?: continue
+                        for (key in listOf("expanded_url", "unwound_url", "display_url")) {
+                            (link.opt(key) as? String)?.takeIf { it.isNotBlank() }?.let { add(it.take(2048)) }
+                        }
                     }
                 }
             }

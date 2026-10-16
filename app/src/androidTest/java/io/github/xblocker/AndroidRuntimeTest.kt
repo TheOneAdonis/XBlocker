@@ -14,6 +14,24 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AndroidRuntimeTest {
+    @Test fun androidUrlEntitiesMatchLiteralAndRegexWithoutReadingQuotedLinks() {
+        val tweet = JSONObject().put("rest_id", "1").put("legacy", JSONObject())
+            .put("details", JSONObject().put("full_text", "Join https://t.co/short"))
+        val links = org.json.JSONArray().put(JSONObject().put("expanded_url", "https://EXAMPLE.org/post"))
+        fun input() = JSONObject().put("entries", org.json.JSONArray().put(JSONObject().put("entry_id", "tweet-1")
+            .put("content", JSONObject().put("content", JSONObject().put("tweet_results", JSONObject().put("result", tweet)))))).toString()
+        for (rule in listOf("example.org", "/example\\.org/i")) {
+            val settings = FilterSettings(cloudEnabled = false, customRules = rule, blockKeywordTweets = true)
+            tweet.put("url_entities", links)
+            val source = input()
+            assertEquals(1, TimelineFilter(RuleEngine(settings, "")).filter(source, "SearchTimeline").events.size)
+            assertEquals(source, TimelineFilter(RuleEngine(settings.copy(blockKeywordTweets = false), "")).filter(source).json)
+            tweet.remove("url_entities")
+            tweet.put("quoted_tweet_results", JSONObject().put("result", JSONObject().put("url_entities", links)))
+            val quoted = input()
+            assertEquals(quoted, TimelineFilter(RuleEngine(settings, "")).filter(quoted).json)
+        }
+    }
     @Test fun historyRetainsOneThousandRecordsWithAndroidJson() {
         var records = org.json.JSONArray()
         repeat(11) { batch ->
