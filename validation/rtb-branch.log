@@ -1,0 +1,9 @@
+recognized=true
+events=1
+event id=conversationthread-0000000000000000000-rtb-image-ad-IS1:redacted-Some(IS1:redacted) reason=推广广告 rule=TimelineRtbImageAd
+stats={blocked=1, entriesArrays=1, entriesInspected=3, envelopes=1, jsonParsed=1, promoted=1, replies=0, reposts=0, responses=1, texts=1, tweets=1}
+timelineEntries=1
+moduleItems=1
+remainingEntryIds=tweet-2
+ordinaryTweetPreserved=true
+outputMatchesExpected=true

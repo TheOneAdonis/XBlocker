@@ -117,16 +117,20 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 if (tweet.text.isNotBlank()) stats.texts.incrementAndGet()
                 if (tweet.isReply) stats.replies.incrementAndGet()
             }
+            // RTB metadata is not proof that the outer timeline item is an advertisement.
+            // Require the concrete ad type and follow only timeline content wrappers.
+            val rtbPromoted = hasRtbPromotion(item, 0) || content.optString("__typename") == "TimelineRtbImageAd"
             val promoted = container?.optJSONObject("promotedMetadata") != null || container?.optJSONObject("tweetPromotedMetadata") != null ||
                 container?.optJSONObject("promoted_metadata") != null ||
                 item.optJSONObject("promotedMetadata") != null || content.optJSONObject("promotedMetadata") != null ||
                 item.optJSONObject("promoted_metadata") != null ||
+                rtbPromoted ||
                 result?.optJSONObject("promoted_content") != null || result?.optJSONObject("legacy")?.optJSONObject("promoted_content") != null
             if (promoted) stats.promoted.incrementAndGet()
             val repostSignal = if (container != null && tweet != null) repostSignal(result, container, item, content) else null
             if (repostSignal != null) stats.reposts.incrementAndGet()
             val hit = when {
-                engine.settings.blockPromoted && promoted -> Match("推广广告", "promotedMetadata", "推广")
+                engine.settings.blockPromoted && promoted -> Match("推广广告", if (rtbPromoted) "TimelineRtbImageAd" else "promotedMetadata", "推广")
                 engine.settings.blockReposts && allowReposts && repostSignal != null -> Match("时间线转帖", repostSignal, "转帖")
                 else -> tweet?.let(engine::match)
             }
@@ -184,6 +188,16 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             is JSONArray -> for (i in 0 until minOf(node.length(), 40)) findTweetContainer(node.opt(i), depth + 1)?.let { return it }
         }
         return null
+    }
+
+    /** Inspect the concrete timeline item type, never metadata, quoted tweets or auxiliary data. */
+    private fun hasRtbPromotion(node: JSONObject, depth: Int): Boolean {
+        if (depth > 4) return false
+        if (node.optString("__typename") == "TimelineRtbImageAd") return true
+        if (node.optJSONObject("tweetResult") != null || node.optJSONObject("tweet_results") != null ||
+            node.optString("__typename") in setOf("TimelineTweet", "Tweet", "TweetWithVisibilityResults")) return false
+        return sequenceOf("content", "itemContent", "item").mapNotNull { node.optJSONObject(it) }
+            .any { hasRtbPromotion(it, depth + 1) }
     }
 
     private fun readTweet(result: JSONObject): Tweet? {
